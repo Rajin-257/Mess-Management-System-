@@ -6,5 +6,6 @@ public class test {
         int a;
         a=10;
         System.out.println(a);
+        System.out.println("Testing git")
     }
 }
