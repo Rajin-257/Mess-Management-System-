@@ -2,6 +2,7 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.ArrayList;
 
 public class IndevidualReport extends JFrame {
     IndevidualReport() {
@@ -37,24 +38,23 @@ public class IndevidualReport extends JFrame {
         });
         add(btn);
         
-        Data.CTotalCost();
-        for (int i = Data.tcost.size()-Data.pData.size(); i < Data.tcost.size(); i++) {
-            Data.TotalCost totalCost = Data.tcost.get(i);
+        // Calculate and display total costs
+        ArrayList<Data.TotalCost> totalCosts = Data.calculateTotalCost();
         
+        for (Data.TotalCost totalCost : totalCosts) {
             Object[] rowData = {
-                    totalCost.name,
-                    totalCost.rentCost,
-                    totalCost.utilityCostPerPerson,
-                    totalCost.totalmeal,
-                    totalCost.permeal,
-                    totalCost.totalMealCost,
-                    totalCost.totalCost
+                    totalCost.getName(),
+                    totalCost.getRentCost(),
+                    totalCost.getUtilityCostPerPerson(),
+                    totalCost.getTotalmeal(),
+                    totalCost.getPermeal(),
+                    totalCost.getTotalMealCost(),
+                    totalCost.getTotalCost()
             };
-        
+            
             tableModel.addRow(rowData);
         }
 
         setVisible(true);
     }
-
 }

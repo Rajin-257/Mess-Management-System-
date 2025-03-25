@@ -9,9 +9,10 @@ public class personlist extends JFrame {
     JTextField searchField;
     JTable table;
     DefaultTableModel model;
+    ArrayList<Data> personData;
 
     personlist() {
-        setTitle("Bazar List");
+        setTitle("Person List");
         setSize(600, 300);
         setResizable(false);
         setLayout(null);
@@ -34,7 +35,6 @@ public class personlist extends JFrame {
         JButton btn1 = new JButton("Search");
         btn1.setBounds(300, 10, 80, 25);
         btn1.addActionListener(new ActionListener() {
-            
             public void actionPerformed(ActionEvent e) {
                 searchAndDisplayData();
             }
@@ -47,19 +47,17 @@ public class personlist extends JFrame {
         scrollPane.setBounds(10, 40, 570, 180);
         add(scrollPane);
 
+        model.addColumn("ID");
         model.addColumn("Name");
         model.addColumn("Phone");
         model.addColumn("Room Rent");
 
-
-        for (Data person : Data.pData) {
-            model.addRow(new Object[]{person.getName(), person.getPhn(), person.getRent()});
-        }
+        personData = Data.getAllPersons();
+        refreshTable();
 
         JButton btn2 = new JButton("Edit");
         btn2.setBounds(100, 230, 80, 25);
         btn2.addActionListener(new ActionListener() {
-            
             public void actionPerformed(ActionEvent e) {
                 editData();
             }
@@ -69,7 +67,6 @@ public class personlist extends JFrame {
         JButton btn3 = new JButton("Delete");
         btn3.setBounds(200, 230, 80, 25);
         btn3.addActionListener(new ActionListener() {
-            
             public void actionPerformed(ActionEvent e) {
                 deleteData();
             }
@@ -79,7 +76,6 @@ public class personlist extends JFrame {
         JButton btn4 = new JButton("Back");
         btn4.setBounds(300, 230, 80, 25);
         btn4.addActionListener(new ActionListener() {
-            
             public void actionPerformed(ActionEvent e) {
                 setVisible(false);
                 new Dashboard();
@@ -94,9 +90,9 @@ public class personlist extends JFrame {
         String searchName = searchField.getText().trim();
         model.setRowCount(0);
 
-        for (Data person : Data.pData) {
+        for (Data person : personData) {
             if (person.getName().toLowerCase().contains(searchName.toLowerCase())) {
-                model.addRow(new Object[]{person.getName(), person.getPhn(), person.getRent()});
+                model.addRow(new Object[]{person.getId(), person.getName(), person.getPhn(), person.getRent()});
             }
         }
 
@@ -106,13 +102,14 @@ public class personlist extends JFrame {
     }
 
     private void editData() {
-        int SelectRow = table.getSelectedRow();
-        if (SelectRow != -1) {
-            String name = (String) table.getValueAt(SelectRow, 0);
-            for (Data person : Data.pData) {
-                if (person.getName().equalsIgnoreCase(name)) {
+        int selectedRow = table.getSelectedRow();
+        if (selectedRow != -1) {
+            int id = (int) table.getValueAt(selectedRow, 0);
+            
+            for (Data person : personData) {
+                if (person.getId() == id) {
                     editDataDialog(person);
-                    refreshTable();
+                    break;
                 }
             }
         } else {
@@ -137,6 +134,11 @@ public class personlist extends JFrame {
                 person.setName(newNameField.getText());
                 person.setPhn(newPhoneField.getText());
                 person.setRent(Integer.parseInt(newRentField.getText()));
+                
+                if (Data.updatePerson(person)) {
+                    personData = Data.getAllPersons();
+                    refreshTable();
+                }
             } catch (NumberFormatException e) {
                 JOptionPane.showMessageDialog(this, "Invalid input for Room Rent. Please enter a valid integer.");
             }
@@ -144,32 +146,30 @@ public class personlist extends JFrame {
     }
 
     private void deleteData() {
-        int SelectRow = table.getSelectedRow();
-        if (SelectRow != -1) {
-            String name = (String) table.getValueAt(SelectRow, 0);
-            Iterator<Data> iterator = Data.pData.iterator();
-            while (iterator.hasNext()) {
-                Data person = iterator.next();
-                if (person.getName().equalsIgnoreCase(name)) {
-                    iterator.remove();
+        int selectedRow = table.getSelectedRow();
+        if (selectedRow != -1) {
+            int id = (int) table.getValueAt(selectedRow, 0);
+            
+            int confirm = JOptionPane.showConfirmDialog(this, 
+                "Are you sure you want to delete this person? This will also delete all associated meal and bazar records.",
+                "Confirm Deletion", JOptionPane.YES_NO_OPTION);
+                
+            if (confirm == JOptionPane.YES_OPTION) {
+                if (Data.deletePerson(id)) {
+                    personData = Data.getAllPersons();
                     refreshTable();
-                    JOptionPane.showMessageDialog(this, "Data for " + name + " deleted.");
+                    JOptionPane.showMessageDialog(this, "Person deleted successfully.");
                 }
             }
         } else {
             JOptionPane.showMessageDialog(this, "Please select a row to delete.");
         }
     }
-    
 
     private void refreshTable() {
         model.setRowCount(0);
-        for (Data person : Data.pData) {
-            model.addRow(new Object[]{person.getName(), person.getPhn(), person.getRent()});
+        for (Data person : personData) {
+            model.addRow(new Object[]{person.getId(), person.getName(), person.getPhn(), person.getRent()});
         }
-    }
-
-    public static void main(String[] args) {
-        new personlist();
     }
 }

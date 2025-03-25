@@ -2,11 +2,12 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.event.ActionEvent;
-
+import java.util.ArrayList;
 
 public class Utilitylist extends JFrame {
     DefaultTableModel model;
+    ArrayList<Data> utilities;
+    
     Utilitylist() {
         setTitle("Utility List");
         setSize(600, 300);
@@ -22,35 +23,112 @@ public class Utilitylist extends JFrame {
 
         String[] cnames = {"Utility Name", "Cost"};
         model = new DefaultTableModel(cnames, 0);
-        if (!Data.utility.isEmpty()) {
-            model.addRow(new Object[]{"House Utility Fee", Data.utility.get(0).getHu()});
-            model.addRow(new Object[]{"Maid Bill", Data.utility.get(0).getMb()});
-            model.addRow(new Object[]{"Electricity Bill", Data.utility.get(0).getEb()});
-            model.addRow(new Object[]{"Clean Bill", Data.utility.get(0).getCb()});
-            model.addRow(new Object[]{"Wifi Bill", Data.utility.get(0).getWb()});
-        } else {
-            JOptionPane.showMessageDialog(this,"Input Utility Cost First","Information", JOptionPane.INFORMATION_MESSAGE);
-            dispose();
-        }
         
+        utilities = Data.getAllUtilities();
+        
+        if (!utilities.isEmpty()) {
+            Data utility = utilities.get(0);
+            model.addRow(new Object[]{"House Utility Fee", utility.getHu()});
+            model.addRow(new Object[]{"Maid Bill", utility.getMb()});
+            model.addRow(new Object[]{"Electricity Bill", utility.getEb()});
+            model.addRow(new Object[]{"Clean Bill", utility.getCb()});
+            model.addRow(new Object[]{"Wifi Bill", utility.getWb()});
+            
+            // Add total row
+            int total = utility.getHu() + utility.getMb() + utility.getEb() + utility.getCb() + utility.getWb();
+            model.addRow(new Object[]{"Total", total});
+        } else {
+            JOptionPane.showMessageDialog(this, "No utility data found. Please add utility costs first.", "Information", JOptionPane.INFORMATION_MESSAGE);
+            dispose();
+            new Dashboard();
+            return;
+        }
 
         JTable table = new JTable(model);
         JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.setBounds(10,20,560,180);
+        scrollPane.setBounds(10, 20, 560, 180);
         add(scrollPane);
 
-        JButton btn1=new JButton("Back");
+        JButton editBtn = new JButton("Edit");
+        editBtn.setBounds(330, 225, 100, 30);
+        editBtn.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                if (!utilities.isEmpty()) {
+                    editUtility(utilities.get(0));
+                }
+            }
+        });
+        add(editBtn);
+
+        JButton btn1 = new JButton("Back");
         btn1.setBounds(470, 225, 100, 30);
-        btn1.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent e){
+        btn1.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
                 dispose();
                 new Dashboard();
             }
-        }
-        );
+        });
         add(btn1);
 
-
         setVisible(true);
+    }
+    
+    private void editUtility(Data utility) {
+        JTextField huField = new JTextField(String.valueOf(utility.getHu()));
+        JTextField mbField = new JTextField(String.valueOf(utility.getMb()));
+        JTextField ebField = new JTextField(String.valueOf(utility.getEb()));
+        JTextField cbField = new JTextField(String.valueOf(utility.getCb()));
+        JTextField wbField = new JTextField(String.valueOf(utility.getWb()));
+        
+        Object[] message = {
+            "House Utility:", huField,
+            "Maid Bill:", mbField,
+            "Electricity Bill:", ebField,
+            "Clean Bill:", cbField,
+            "Wifi Bill:", wbField
+        };
+        
+        int option = JOptionPane.showConfirmDialog(this, message, "Edit Utility Data", JOptionPane.OK_CANCEL_OPTION);
+        
+        if (option == JOptionPane.OK_OPTION) {
+            try {
+                int huValue = Integer.parseInt(huField.getText());
+                int mbValue = Integer.parseInt(mbField.getText());
+                int ebValue = Integer.parseInt(ebField.getText());
+                int cbValue = Integer.parseInt(cbField.getText());
+                int wbValue = Integer.parseInt(wbField.getText());
+                
+                utility.setHu(huValue);
+                utility.setMb(mbValue);
+                utility.setEb(ebValue);
+                utility.setCb(cbValue);
+                utility.setWb(wbValue);
+                
+                if (Data.updateUtility(utility)) {
+                    // Refresh the data
+                    utilities = Data.getAllUtilities();
+                    refreshTable();
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Please enter valid numbers for all fields", "Input Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+    
+    private void refreshTable() {
+        model.setRowCount(0);
+        
+        if (!utilities.isEmpty()) {
+            Data utility = utilities.get(0);
+            model.addRow(new Object[]{"House Utility Fee", utility.getHu()});
+            model.addRow(new Object[]{"Maid Bill", utility.getMb()});
+            model.addRow(new Object[]{"Electricity Bill", utility.getEb()});
+            model.addRow(new Object[]{"Clean Bill", utility.getCb()});
+            model.addRow(new Object[]{"Wifi Bill", utility.getWb()});
+            
+            // Add total row
+            int total = utility.getHu() + utility.getMb() + utility.getEb() + utility.getCb() + utility.getWb();
+            model.addRow(new Object[]{"Total", total});
+        }
     }
 }

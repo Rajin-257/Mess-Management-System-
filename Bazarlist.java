@@ -3,11 +3,13 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
 
 public class Bazarlist extends JFrame {
 
     private DefaultTableModel model;
     private JTable table;
+    private ArrayList<Data> bazars;
 
     Bazarlist() {
         setTitle("Bazar List");
@@ -22,12 +24,14 @@ public class Bazarlist extends JFrame {
         ImageIcon favIcon = new ImageIcon(ClassLoader.getSystemResource("img/fav.png"));
         setIconImage(favIcon.getImage());
 
-        String[] cNames = {"Date","Name", "Bazar List", "Cost"};
+        String[] cNames = {"ID", "Date", "Name", "Bazar List", "Cost"};
 
         model = new DefaultTableModel(cNames, 0);
+        bazars = Data.getAllBazar();
 
-        for (Data data : Data.bdata) {
+        for (Data data : bazars) {
             Object[] fData = {
+                    data.getId(),
                     data.getDate(),
                     data.getName(),
                     data.getList(),
@@ -35,7 +39,9 @@ public class Bazarlist extends JFrame {
             };
             model.addRow(fData);
         }
-        Object[] tbcost={" "," ","Total Cost",Data.totalBazarcost()};
+        
+        // Add total row
+        Object[] tbcost = {"", "", "", "Total Cost", Data.totalBazarcost()};
         model.addRow(tbcost);
 
         table = new JTable(model);
@@ -56,42 +62,36 @@ public class Bazarlist extends JFrame {
         btn1.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 String searchText = searchField.getText().trim();
-                DefaultTableModel fModel = new DefaultTableModel(new String[]{"Date", "Name", "Bazar List", "Cost"}, 0);
-
-                for (Data data : Data.bdata) {
-                    if (data.getDate().equals(searchText)) {
-                        Object[] fData = {
-                                data.getDate(),
-                                data.getName(),
-                                data.getList(),
-                                data.getCost()
-                        };
-                        fModel.addRow(fData);
-                    }
+                if (!searchText.isEmpty()) {
+                    ArrayList<Data> filteredBazars = Data.getBazarByDate(searchText);
+                    updateTableWithFilteredData(filteredBazars);
+                } else {
+                    refreshTable();
                 }
-                table.setModel(fModel);
             }
         });
         add(btn1);
 
         JButton btn2 = new JButton("Back");
         btn2.setBounds(10, 10, 80, 25);
-        add(btn2);
         btn2.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 dispose();
                 new Dashboard();
             }
         });
+        add(btn2);
 
         JButton btn3 = new JButton("Delete");
         btn3.setBounds(100, 10, 80, 25);
         btn3.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                int SelectRow = table.getSelectedRow();
-                if (SelectRow != -1) {
-                    Data.bdata.remove(SelectRow);
-                    refreshTable();
+                int selectedRow = table.getSelectedRow();
+                if (selectedRow != -1 && selectedRow < bazars.size()) {
+                    int id = bazars.get(selectedRow).getId();
+                    if (Data.deleteBazar(id)) {
+                        refreshTable();
+                    }
                 }
             }
         });
@@ -101,10 +101,9 @@ public class Bazarlist extends JFrame {
         btn4.setBounds(190, 10, 80, 25);
         btn4.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                int SelectRow = table.getSelectedRow();
-                if (SelectRow != -1) {
-                    update(SelectRow);
-                    refreshTable();
+                int selectedRow = table.getSelectedRow();
+                if (selectedRow != -1 && selectedRow < bazars.size()) {
+                    update(selectedRow);
                 }
             }
         });
@@ -114,9 +113,16 @@ public class Bazarlist extends JFrame {
     }
 
     private void refreshTable() {
+        bazars = Data.getAllBazar();
+        updateTableWithFilteredData(bazars);
+    }
+    
+    private void updateTableWithFilteredData(ArrayList<Data> filteredData) {
         model.setRowCount(0);
-        for (Data data : Data.bdata) {
+        
+        for (Data data : filteredData) {
             Object[] fData = {
+                    data.getId(),
                     data.getDate(),
                     data.getName(),
                     data.getList(),
@@ -124,18 +130,37 @@ public class Bazarlist extends JFrame {
             };
             model.addRow(fData);
         }
-        table.setModel(model);
+        
+        // Add total row - if filtering by date, show total for that date, otherwise show all
+        double totalCost = 0;
+        if (filteredData.size() > 0) {
+            for (Data data : filteredData) {
+                totalCost += data.getCost();
+            }
+        } else {
+            totalCost = Data.totalBazarcost();
+        }
+        
+        Object[] tbcost = {"", "", "", "Total Cost", totalCost};
+        model.addRow(tbcost);
     }
 
-    private void update(int SelectRow) {
-        JTextField dateField = new JTextField(Data.bdata.get(SelectRow).getDate());
-        JTextField nameField = new JTextField(Data.bdata.get(SelectRow).getName());
-        JTextField listField = new JTextField(Data.bdata.get(SelectRow).getList());
-        JTextField costField = new JTextField(Double.toString(Data.bdata.get(SelectRow).getCost()));
+    private void update(int selectedRow) {
+        Data selectedBazar = bazars.get(selectedRow);
+        
+        JTextField dateField = new JTextField(selectedBazar.getDate());
+        
+        // Create name dropdown with current name selected
+        String[] allNames = Data.getnames();
+        JComboBox<String> nameCombo = new JComboBox<>(allNames);
+        nameCombo.setSelectedItem(selectedBazar.getName());
+        
+        JTextField listField = new JTextField(selectedBazar.getList());
+        JTextField costField = new JTextField(Double.toString(selectedBazar.getCost()));
 
         Object[] message = {
                 "Date:", dateField,
-                "Name:", nameField,
+                "Name:", nameCombo,
                 "Bazar List:", listField,
                 "Cost:", costField
         };
@@ -143,17 +168,20 @@ public class Bazarlist extends JFrame {
         int option = JOptionPane.showConfirmDialog(null, message, "Update Bazar Data", JOptionPane.OK_CANCEL_OPTION);
 
         if (option == JOptionPane.OK_OPTION) {
-            String date = dateField.getText();
-            String name = nameField.getText();
-            String bazarList = listField.getText();
-            double cost = Double.parseDouble(costField.getText());
+            try {
+                String date = dateField.getText();
+                String name = nameCombo.getSelectedItem().toString();
+                String bazarList = listField.getText();
+                double cost = Double.parseDouble(costField.getText());
 
-            Data obj = new Data(date,name, bazarList, cost);
+                Data updatedBazar = new Data(selectedBazar.getId(), date, name, bazarList, cost);
 
-          
-            Data.bdata.set(SelectRow, obj);
-        } else {
-            JOptionPane.showMessageDialog(null, "Update canceled by user.", "Update Canceled", JOptionPane.WARNING_MESSAGE);
+                if (Data.updateBazar(updatedBazar)) {
+                    refreshTable();
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Please enter a valid number for cost", "Input Error", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 }
